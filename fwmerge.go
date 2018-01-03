@@ -51,18 +51,21 @@ func main() {
 		fmt.Fprintf(os.Stderr, strings.TrimSpace(USAGE_TEXT)+"\n\n")
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] <file...>\n", os.Args[0])
 		flag.PrintDefaults()
+		os.Exit(1)
 	}
 	flag.Parse()
 
 	paths := flag.Args()
 	if len(paths) == 0 {
 		flag.Usage()
+		os.Exit(1)
 		return
 	}
 
 	rs, err := ParseFiles(paths)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing rulesets:\n%v\n", err)
+		os.Exit(1)
 		return
 	}
 
@@ -71,10 +74,12 @@ func main() {
 		ipt, err := GenerateIptables(rs)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error generating iptables output: %v\n", err)
+			os.Exit(1)
 			return
 		}
 		fmt.Print(ipt)
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown generator '%s'", *generator)
+		os.Exit(1)
 	}
 }
