@@ -47,6 +47,28 @@ ruleset that can be piped to `iptables-restore`.
 For the `iptables` generator, all rules must be valid `iptables` match/target
 specifications. Do not include the actual insertion command(e.g. `-A`).
 
+If we consider the following simple ruleset:
+```yaml
+filter:
+  INPUT:
+    - 10 allow SSH: -p tcp --dport 22 -j ACCEPT
+    - 10 allow DNS: -p udp --dport 53 -j ACCEPT
+```
+The `iptables` generator of `fwmerge` will output the following:
+```
+*filter
+:INPUT ACCEPT [0:0]
+-F INPUT
+-A INPUT -p tcp --dport 22 -j ACCEPT
+-A INPUT -p udp --dport 53 -j ACCEPT
+COMMIT
+```
+This output is compatible with `iptables-restore`, and can be piped directly to
+it. Note also that the generated ruleset included `-F`(flush) commands. This
+allows the ruleset to be used with `--noflush` option of `iptables-restore`. In
+concert with [Unmanaged Chains](#unmanaged-chains) this allows an existing
+ruleset to be updated.
+
 Ruleset merging
 ---------------
 
@@ -59,8 +81,8 @@ chains by priority. As an example, given the following two rulesets:
 # Ruleset 1
 filter:
   INPUT:
-    - 10 allow SSH: -p tcp --dport 22 -j ACCEPT 
-    - 10 allow DNS: -p udp --dport 53 -j ACCEPT 
+    - 10 allow SSH: -p tcp --dport 22 -j ACCEPT
+    - 10 allow DNS: -p udp --dport 53 -j ACCEPT
 
 # Ruleset 2
 filter:
@@ -75,8 +97,8 @@ filter:
 filter:
   INPUT:
     - 5 allow ICMP: -p icmp -j ACCEPT 
-    - 10 allow SSH: -p tcp --dport 22 -j ACCEPT 
-    - 10 allow DNS: -p udp --dport 53 -j ACCEPT 
+    - 10 allow SSH: -p tcp --dport 22 -j ACCEPT
+    - 10 allow DNS: -p udp --dport 53 -j ACCEPT
 ```
 
 Note that the sort is stable, which means that rules within a single file will
@@ -130,3 +152,24 @@ With `fwmerge`, these systems can manage a single directory with firewall
 rulesets instead of statefully trying to manage the ruleset. The final ruleset
 can then be assembled by `fwmerge`. It is recommended to wrap `fwmerge` in a
 service for easy firewall reloads.
+
+Using with a service manager
+----------------------------
+
+`fwmerge` is designed to be used together with a service manager, e.g. systemd
+or upstart. Here we will show a small example of using `fwmerge` together with
+systemd. The general methodology should be applicable to other service managers
+as well.
+
+To actually apply the ruleset, we need a small shell script that the service
+manager can call. We will place this at `/usr/local/bin/fwmerge-apply`:
+```shell
+#!/bin/bash
+set -eo pipefail
+/usr/local/bin/fwmerge /etc/fw.d/*.yaml | iptables-restore -n
+```
+Here we assume that the `fwmerge` binary is located at `/usr/local/bin/fwmerge`
+and `iptables-restore` at `/usr/bin/iptables-restore`.
+
+This script will run `fwmerge` on all `yaml` files in `/etc/fw.d/` and apply the
+generated ruleset.
