@@ -166,7 +166,7 @@ manager can call. We will place this at `/usr/local/bin/fwmerge-apply`:
 ```shell
 #!/bin/bash
 set -eo pipefail
-/usr/local/bin/fwmerge /etc/fw.d/*.yaml | iptables-restore -n
+/usr/local/bin/fwmerge /etc/fw.d/*.yaml | /usr/local/iptables-restore -n
 ```
 Here we assume that the `fwmerge` binary is located at `/usr/local/bin/fwmerge`
 and `iptables-restore` at `/usr/bin/iptables-restore`.
