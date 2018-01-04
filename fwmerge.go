@@ -31,7 +31,8 @@ the policy tag has no prioirty, the last policy set will win.
 
 fwmerge can also create unmanaged chains. These are chains that fwmerge will ask the
 firewall to create, but it won't output rules to populate the chain. This allows other
-applications to manage these chains without interference.
+applications to manage these chains without interference. For this to work correctly
+with iptables, a bit more effort is required - see the readme.
 
 The rules are specified as either:
   <priority>: <rule>
@@ -41,7 +42,9 @@ The priority is used for sorting, the comment is ignored, and the rule is output
 verbatim into the ruleset. The rule must be convertable to a string.
 
 For now the only supported generator is iptables. This generator will output a ruleset
-that can be piped to iptables-restore.
+that can be piped to iptables-restore. There are also two 'sub-generators' named
+iptables-chains and iptables-nochains. These are for use when doing unmanaged chains,
+and are documented in the readme.
 `
 
 func main() {
