@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -eo pipefail
+
+DIR="$1"
+
+if [ "$DIR" = "" ]; then
+  echo "No source directory provided!"
+  exit 1
+fi
+
+CHAINS="$(/usr/local/bin/fwmerge --generator=iptables-chains $DIR/*.yaml)"
+echo "$CHAINS" | while read TABLE CHAIN; do
+  # Try to create the chain, ignore the result
+  (set +e; iptables -t "$TABLE" -N "$CHAIN" &>/dev/null; exit 0)
+done
+
+/usr/local/bin/fwmerge --generator=iptables-nochains $DIR/*.yaml | iptables-restore -n

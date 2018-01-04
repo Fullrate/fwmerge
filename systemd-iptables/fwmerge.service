@@ -1,0 +1,11 @@
+[Unit]
+Description=Fwmerge merged firewall ruleset
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/fwmerge-apply /etc/fw.d/
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target

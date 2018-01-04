@@ -71,13 +71,29 @@ func main() {
 
 	switch *generator {
 	case "iptables":
-		ipt, err := GenerateIptables(rs)
+		out, err := GenerateIptables(rs, true)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error generating iptables output: %v\n", err)
 			os.Exit(1)
 			return
 		}
-		fmt.Print(ipt)
+		fmt.Print(out)
+	case "iptables-nochains":
+		out, err := GenerateIptables(rs, false)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating iptables output: %v\n", err)
+			os.Exit(1)
+			return
+		}
+		fmt.Print(out)
+	case "iptables-chains":
+		out, err := GenerateIptablesChains(rs)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating chain list: %v\n", err)
+			os.Exit(1)
+			return
+		}
+		fmt.Print(out)
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown generator '%s'", *generator)
 		os.Exit(1)

@@ -26,9 +26,10 @@ filter:
 Note that the policy tag has no prioirty, the last policy set will win. If no
 policy is set, the default will be set to **ACCEPT**.
 
-`fwmerge` can also create unmanaged chains. These are chains that fwmerge will
-ask the firewall to create, but it won't output rules to populate the chain.
-This allows other applications to manage these chains without interference.
+`fwmerge` can also create [Unmanaged Chains](#unmanaged-chains). These are
+chains that fwmerge will ask the firewall to create, but it won't output rules
+to populate the chain.  This allows other applications to manage these chains
+without interference. This requires some extra effort for `iptables`.
 
 The rules are specified as either:
 
@@ -58,16 +59,12 @@ The `iptables` generator of `fwmerge` will output the following:
 ```
 *filter
 :INPUT ACCEPT [0:0]
--F INPUT
 -A INPUT -p tcp --dport 22 -j ACCEPT
 -A INPUT -p udp --dport 53 -j ACCEPT
 COMMIT
 ```
 This output is compatible with `iptables-restore`, and can be piped directly to
-it. Note also that the generated ruleset included `-F`(flush) commands. This
-allows the ruleset to be used with `--noflush` option of `iptables-restore`. In
-concert with [Unmanaged Chains](#unmanaged-chains) this allows an existing
-ruleset to be updated.
+it.
 
 Ruleset merging
 ---------------
@@ -127,6 +124,16 @@ filter:
 This will ensure that the fail2ban-ssh chains exists, but otherwise will not
 touch the contents of the chain.
 
+For `iptables`, unmanaged chains cannot be handled by a single invocation of
+`fwmerge`. This is because `iptables-restore` does not support ensuring that a
+table exists without also flushing that chain(the `:<CHAIN> - ` directive in the
+ruleset). To work around this, `fwmerge` has two more generators:
+
+  - `iptables-chains`: generates a list of space-seperated `(table,chain)` pairs
+    that must be created before the ruleset is applied.
+  - `iptables-nochains`: generates a full ruleset without the chain definition
+    directives. This ruleset can be parsed to `iptables-restore -n`.
+
 Chain policy
 ------------
 
@@ -157,19 +164,8 @@ Using with a service manager
 ----------------------------
 
 `fwmerge` is designed to be used together with a service manager, e.g. systemd
-or upstart. Here we will show a small example of using `fwmerge` together with
-systemd. The general methodology should be applicable to other service managers
-as well.
-
-To actually apply the ruleset, we need a small shell script that the service
-manager can call. We will place this at `/usr/local/bin/fwmerge-apply`:
-```shell
-#!/bin/bash
-set -eo pipefail
-/usr/local/bin/fwmerge /etc/fw.d/*.yaml | /usr/local/iptables-restore -n
-```
-Here we assume that the `fwmerge` binary is located at `/usr/local/bin/fwmerge`
-and `iptables-restore` at `/usr/bin/iptables-restore`.
-
-This script will run `fwmerge` on all `yaml` files in `/etc/fw.d/` and apply the
-generated ruleset.
+or upstart. In the `systemd-iptables` folder we've provided a small example of
+how this can be accomplished. The service executes a small script,
+`fwmerge-apply`, which will first create all defined chains and then apply the
+actual ruleset. This two-step procedure allows the use of [Unmanaged
+Chains](#unmanaged-chains).

@@ -30,30 +30,46 @@ var POLICY_TABLES = map[string]map[string]struct{}{
 	},
 }
 
-func generateTable(name string, t Table) (string, error) {
+func chainHasPolicy(tname, cname string) bool {
+	if POLICY_TABLES[tname] != nil {
+		if _, ok := POLICY_TABLES[tname][cname]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func generateTable(name string, t Table, withChains bool) (string, error) {
 	var tmp string
 	tmp += fmt.Sprintf("*%s\n", name)
 
-	// Define chains
-	for cname, chain := range t {
-		policy := "-"
-		if POLICY_TABLES[name] != nil {
-			if _, ok := POLICY_TABLES[name][cname]; ok {
+	if withChains {
+		// Declare all chains. This will also flush them.
+		for cname, chain := range t {
+			policy := "-"
+			if chainHasPolicy(name, cname) {
 				policy = strings.ToUpper(chain.Policy)
 				if policy == "" {
 					policy = "ACCEPT"
 				}
 			}
+			tmp += fmt.Sprintf(":%s %s [0:0]\n", cname, policy)
 		}
-		tmp += fmt.Sprintf(":%s %s [0:0]\n", cname, policy)
-	}
-
-	// Clear chains that are not unmanaged
-	for cname, chain := range t {
-		if chain.Unmanaged {
-			continue
+	} else {
+		// Clear chains that are not unmanaged
+		for cname, chain := range t {
+			if chain.Unmanaged {
+				continue
+			}
+			tmp += fmt.Sprintf("-F %s\n", cname)
+			if chainHasPolicy(name, cname) {
+				policy := strings.ToUpper(chain.Policy)
+				if policy == "" {
+					policy = "ACCEPT"
+				}
+				tmp += fmt.Sprintf("-P %s %s\n", cname, policy)
+			}
 		}
-		tmp += fmt.Sprintf("-F %s\n", cname)
 	}
 
 	// Insert rules into chains
@@ -70,14 +86,27 @@ func generateTable(name string, t Table) (string, error) {
 	return tmp, nil
 }
 
-func GenerateIptables(rs Ruleset) (string, error) {
+func GenerateIptables(rs Ruleset, withChains bool) (string, error) {
 	var tmp string
 	for tname, tbl := range rs {
-		td, err := generateTable(tname, tbl)
+		td, err := generateTable(tname, tbl, withChains)
 		if err != nil {
 			return "", err
 		}
 		tmp += td
+	}
+	return tmp, nil
+}
+
+func GenerateIptablesChains(rs Ruleset) (string, error) {
+	var tmp string
+	for tname, tbl := range rs {
+		for cname, _ := range tbl {
+			// Default chains always exist, skip them
+			if !chainHasPolicy(tname, cname) {
+				tmp += fmt.Sprintf("%s %s\n", tname, cname)
+			}
+		}
 	}
 	return tmp, nil
 }
