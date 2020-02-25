@@ -2,6 +2,22 @@
 
 set -eo pipefail
 
+PREFIX="iptables"
+
+[ $# -eq 0 ] && echo "$0 [-4|-6] <dir>" 2>&1 && exit 1
+while getopts "46" opt; do
+	case "$opt" in
+		4) PREFIX="iptables"
+			;;
+		6) PREFIX="ip6tables"
+			;;
+		*) echo "$0 [-4|-6] <dir>" 2>&1
+			exit 1
+			;;
+	esac
+done
+shift $((OPTIND-1))
+
 DIR="$1"
 
 if [ "$DIR" = "" ]; then
@@ -12,7 +28,7 @@ fi
 CHAINS="$(/usr/local/bin/fwmerge --generator=iptables-chains $DIR/*.yaml)"
 echo "$CHAINS" | while read TABLE CHAIN; do
   # Try to create the chain, ignore the result
-  (set +e; iptables -t "$TABLE" -N "$CHAIN" &>/dev/null; exit 0)
+  (set +e; "$PREFIX" -t "$TABLE" -N "$CHAIN" &>/dev/null; exit 0)
 done
 
-/usr/local/bin/fwmerge --generator=iptables-nochains $DIR/*.yaml | iptables-restore -w -n
+/usr/local/bin/fwmerge --generator=iptables-nochains $DIR/*.yaml | "$PREFIX-restore" -n
