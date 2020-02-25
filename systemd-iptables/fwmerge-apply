@@ -15,4 +15,4 @@ echo "$CHAINS" | while read TABLE CHAIN; do
   (set +e; iptables -t "$TABLE" -N "$CHAIN" &>/dev/null; exit 0)
 done
 
-/usr/local/bin/fwmerge --generator=iptables-nochains $DIR/*.yaml | iptables-restore -n
+/usr/local/bin/fwmerge --generator=iptables-nochains $DIR/*.yaml | iptables-restore -w -n
